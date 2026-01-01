@@ -1,0 +1,171 @@
+## -----------------------------------------------------------------------------
+# Install package yang diperlukan
+install.packages("psych")   # Untuk uji validitas
+install.packages("ltm")     # Untuk uji reliabilitas
+install.packages("nortest")  # Untuk KS test
+
+
+## -----------------------------------------------------------------------------
+# Load library
+library(psych)
+library(ltm)
+library(nortest)
+
+
+## -----------------------------------------------------------------------------
+# 1. Baca dataset
+data <- read.csv("C:/Users/victu/Downloads/cleaned_merged_heart_dataset.csv")
+View(data)
+
+
+## -----------------------------------------------------------------------------
+# 2. Cek nama kolom yang tersedia di dataset
+cat("Nama kolom dalam dataset:\n")
+print(names(data))
+
+
+## -----------------------------------------------------------------------------
+# 3. Pilih hanya kolom numerik kontinu yang sesuai (pastikan kolom ini ada)
+selected_cols <- c("age", "trestbps", "chol", "oldpeak")
+
+
+# Pastikan semua kolom yang dipilih ada dalam dataset
+selected_cols <- selected_cols[selected_cols %in% names(data)]
+
+# Jika tidak ada kolom yang cocok, hentikan program
+if (length(selected_cols) == 0) {
+  stop("Tidak ada kolom numerik yang cocok ditemukan dalam dataset. Periksa kembali nama kolom!")
+}
+
+
+## -----------------------------------------------------------------------------
+# 4. Ambil data hanya dari kolom yang tersedia
+numeric_data <- data[selected_cols]
+
+
+## -----------------------------------------------------------------------------
+# 5. Uji Normalitas (Kolmogorov-Smirnov & Shapiro-Wilk)
+cat("\n--- Uji Normalitas ---\n")
+for (col in selected_cols) {
+  cat("\nKolom:", col)
+  
+  # Kolmogorov-Smirnov Test
+  ks_test <- ks.test(numeric_data[[col]], "pnorm", mean=mean(numeric_data[[col]], na.rm=TRUE), sd=sd(numeric_data[[col]], na.rm=TRUE))
+  cat("\n  KS Test p-value:", ks_test$p.value, ifelse(ks_test$p.value > 0.05, "✅ Normal", "❌ Tidak Normal"))
+
+  # Shapiro-Wilk Test (untuk sampel kecil < 5000)
+  if (nrow(numeric_data) < 5000) {
+    shapiro_test <- shapiro.test(numeric_data[[col]])
+    cat("\n  Shapiro-Wilk p-value:", shapiro_test$p.value, ifelse(shapiro_test$p.value > 0.05, "✅ Normal", "❌ Tidak Normal"))
+  }
+  cat("\n-----------------------------")
+}
+
+
+## -----------------------------------------------------------------------------
+# 1. Pilih hanya kolom numerik + target
+selected_cols <- c("age", "trestbps", "chol", "oldpeak", "target")
+
+# Ambil data hanya dari kolom yang tersedia
+selected_cols <- selected_cols[selected_cols %in% names(data)]
+numeric_data <- data[selected_cols]
+
+
+## -----------------------------------------------------------------------------
+# 2. Cek korelasi Spearman antara setiap variabel dengan 'target'
+cat("\n--- Uji Validitas (Spearman Correlation) ---\n")
+for (col in selected_cols) {
+  if (col != "target") {
+    cor_test <- cor.test(numeric_data[[col]], numeric_data$target, method="spearman")
+    cat("\nKolom:", col)
+    cat("\n  Spearman Correlation:", cor_test$estimate)
+    cat("\n  p-value:", cor_test$p.value, ifelse(cor_test$p.value < 0.05, "✅ Valid", "❌ Tidak Valid"))
+    cat("\n-----------------------------")
+  }
+}
+
+
+## -----------------------------------------------------------------------------
+# 1. Pilih hanya kolom numerik (tanpa target)
+reliability_cols <- c("age", "trestbps", "chol", "oldpeak")
+
+# Ambil data hanya dari kolom yang tersedia
+reliability_cols <- reliability_cols[reliability_cols %in% names(data)]
+reliability_data <- data[reliability_cols]
+
+
+## -----------------------------------------------------------------------------
+# 2. Hitung Cronbach's Alpha
+cat("\n--- Uji Reliabilitas (Cronbach's Alpha) ---\n")
+alpha_result <- alpha(reliability_data)
+cat("\nCronbach's Alpha:", alpha_result$total$raw_alpha)
+
+# 3. Interpretasi Hasil
+if (alpha_result$total$raw_alpha >= 0.7) {
+  cat("\n✅ Reliabel (Cronbach's Alpha ≥ 0.7)")
+} else {
+  cat("\n❌ Tidak Reliabel (Cronbach's Alpha < 0.7)")
+}
+
+
+## -----------------------------------------------------------------------------
+# Install package jika belum ada
+install.packages("ggplot2")
+install.packages("ggpubr")
+
+# Load library
+library(ggplot2)
+library(ggpubr)
+
+# List variabel numerik
+numeric_cols <- c("age", "trestbps", "chol", "oldpeak")
+
+# Plot Histogram & Q-Q plot
+for (col in numeric_cols) {
+  p1 <- ggplot(data, aes_string(x = col)) + 
+        geom_histogram(bins = 30, fill="blue", alpha=0.5) + 
+        ggtitle(paste("Histogram of", col))
+
+  p2 <- ggqqplot(data[[col]], title = paste("Q-Q Plot of", col))
+
+  print(ggarrange(p1, p2, ncol = 2, nrow = 1))
+}
+
+
+## -----------------------------------------------------------------------------
+# Install package jika belum ada
+install.packages("corrplot")
+
+# Load library
+library(corrplot)
+
+# Hitung korelasi Spearman
+cor_matrix <- cor(data[selected_cols], method = "spearman")
+
+# Plot heatmap korelasi
+corrplot(cor_matrix, method = "color", addCoef.col = "black", number.cex = 0.7)
+
+
+
+## -----------------------------------------------------------------------------
+# Install package jika belum ada
+install.packages("ggplot2")
+
+# Load library
+library(ggplot2)
+
+# Buat Data Frame
+alpha_data <- data.frame(
+  Variable = "Cronbach's Alpha",
+  Value = 0.207
+)
+
+# Plot Bar Chart
+ggplot(alpha_data, aes(x = Variable, y = Value, fill = Variable)) +
+  geom_bar(stat = "identity", width = 0.5) +
+  geom_hline(yintercept = 0.7, linetype="dashed", color="red") + 
+  ggtitle("Cronbach's Alpha") +
+  ylab("Reliability Score") +
+  theme_minimal()
+
+
